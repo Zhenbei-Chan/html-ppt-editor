@@ -148,11 +148,17 @@
       floatingTimer: null,
       minimapTimer: null,
       thumbDragIndex: null,
+      thumbCollapsed: false,
+      thumbSelectionActive: false,
+      thumbMenuIndex: null,
+      slideScrollLockUntil: 0,
+      slideScrollTarget: 0,
       minimapHover: false,
       floatingRecords: [],
       hiddenPointerNodes: [],
       sourceName: options.sourceName || doc.title || "html-ppt.html",
       exportName: options.exportName || "html-ppt-edited.html",
+      logoUrl: options.logoUrl || "",
       draftKey: options.draftKey || `hpe:draft:${win.location.href}`,
       reserveWorkspace: Boolean(options.reserveWorkspace),
       showWelcome: Boolean(options.showWelcome),
@@ -205,6 +211,7 @@
         html.hpe-editing-active, html.hpe-editing-active * { cursor: auto !important; }
         html.hpe-shell-layout { --hpe-side-width: 352px; --hpe-rail-width: 64px; --hpe-thumb-width: 0px; --hpe-top-height: 56px; --hpe-status-height: 32px; }
         html.hpe-shell-layout.hpe-has-slide-thumbs { --hpe-thumb-width: 136px; }
+        html.hpe-shell-layout.hpe-has-slide-thumbs.hpe-thumbs-collapsed { --hpe-thumb-width: 38px; }
         html.hpe-shell-layout.hpe-panel-collapsed { --hpe-side-width: var(--hpe-rail-width); }
         html.hpe-shell-layout.hpe-editing-active { overflow: hidden !important; }
         html.hpe-shell-layout.hpe-editing-active body { height: calc(100vh - var(--hpe-top-height) - var(--hpe-status-height)) !important; margin-top: var(--hpe-top-height) !important; margin-left: var(--hpe-thumb-width) !important; margin-right: 0 !important; overflow: auto !important; width: calc(100vw - var(--hpe-side-width) - var(--hpe-thumb-width)) !important; max-width: calc(100vw - var(--hpe-side-width) - var(--hpe-thumb-width)) !important; }
@@ -214,7 +221,9 @@
         .hpe-root { --hpe-side-width: 352px; --hpe-rail-width: 64px; --hpe-panel-width: 288px; --hpe-top-height: 56px; --hpe-status-height: 32px; --hpe-primary: #1677ff; --hpe-primary-hover: #0f63d9; --hpe-danger: #e5484d; --hpe-text: #0a1a33; --hpe-muted: #5f6b7a; --hpe-border: #e5eaf0; position: fixed; inset: 0; z-index: 2147483646; pointer-events: none; color: var(--hpe-text); }
         .hpe-appbar { align-items: center; background: rgba(255,255,255,.96); border-bottom: 1px solid var(--hpe-border); display: flex; height: var(--hpe-top-height); justify-content: space-between; left: 0; padding: 0 16px; pointer-events: auto; position: fixed; right: 0; top: 0; }
         .hpe-brand { align-items: center; display: flex; gap: 10px; min-width: 0; }
-        .hpe-logo { align-items: center; background: var(--hpe-primary); border-radius: 6px; color: #fff; display: inline-flex; font-size: 14px; font-weight: 700; height: 26px; justify-content: center; width: 26px; }
+        .hpe-logo { align-items: center; background: #eef5ff; border: 1px solid #cfe1ff; border-radius: 7px; display: inline-flex; height: 28px; justify-content: center; overflow: hidden; width: 28px; }
+        .hpe-logo img { display: block; height: 22px; width: 22px; }
+        .hpe-logo-fallback { color: var(--hpe-primary); font-size: 14px; font-weight: 700; }
         .hpe-title { font-size: 15px; font-weight: 650; }
         .hpe-file { color: var(--hpe-muted); font-size: 12px; max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .hpe-appbar-center { color: var(--hpe-muted); font-size: 13px; }
@@ -230,10 +239,12 @@
         .hpe-icon-only { gap: 0; justify-content: center; padding-left: 0 !important; padding-right: 0 !important; width: 28px; }
         .hpe-icon-only .hpe-button-label, .hpe-visually-hidden { clip: rect(0 0 0 0); height: 1px; margin: -1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
         .hpe-topbar { position: fixed; right: var(--hpe-panel-width); top: var(--hpe-top-height); bottom: var(--hpe-status-height); width: var(--hpe-rail-width); display: flex; flex-direction: column; gap: 3px; align-items: center; background: #fff; border-left: 1px solid var(--hpe-border); border-right: 1px solid var(--hpe-border); padding: 6px 5px; pointer-events: auto; overflow: hidden; }
-        .hpe-thumb-rail { background: rgba(248,250,252,.98); border-right: 1px solid var(--hpe-border); bottom: var(--hpe-status-height); display: none; left: 0; overflow: auto; padding: 10px 8px; pointer-events: auto; position: fixed; top: var(--hpe-top-height); width: var(--hpe-thumb-width); }
+        .hpe-thumb-rail { background: rgba(248,250,252,.98); border-right: 1px solid var(--hpe-border); bottom: var(--hpe-status-height); display: none; left: 0; overflow: auto; padding: 8px; pointer-events: auto; position: fixed; top: var(--hpe-top-height); width: var(--hpe-thumb-width); }
         .hpe-root.has-slides .hpe-thumb-rail { display: block; }
+        .hpe-thumb-toggle { align-items: center; background: #fff; border: 1px solid #d0d7e2; border-radius: 8px; color: var(--hpe-text); cursor: pointer; display: inline-flex; height: 28px; justify-content: center; margin-bottom: 8px; padding: 0; position: sticky; top: 0; width: 28px; z-index: 1; }
+        .hpe-thumb-toggle::before { background: currentColor; content: ""; display: block; height: 16px; -webkit-mask: var(--hpe-icon) center / contain no-repeat; mask: var(--hpe-icon) center / contain no-repeat; width: 16px; }
         .hpe-thumb-list { display: flex; flex-direction: column; gap: 8px; }
-        .hpe-thumb-item { align-items: stretch; background: transparent; border: 0; color: var(--hpe-text); cursor: grab; display: grid; gap: 4px; grid-template-columns: 1fr 22px; padding: 0; text-align: left; }
+        .hpe-thumb-item { align-items: stretch; background: transparent; border: 0; color: var(--hpe-text); cursor: grab; display: block; padding: 0; text-align: left; }
         .hpe-thumb-item:active { cursor: grabbing; }
         .hpe-thumb-card { background: #fff; border: 2px solid #d8e0ec; border-radius: 8px; min-height: 66px; overflow: hidden; padding: 6px; }
         .hpe-thumb-item.active .hpe-thumb-card { border-color: var(--hpe-primary); box-shadow: 0 0 0 2px rgba(22,119,255,.12); }
@@ -241,7 +252,13 @@
         .hpe-thumb-title { color: var(--hpe-text); font-size: 11px; font-weight: 650; line-height: 1.25; max-height: 28px; overflow: hidden; }
         .hpe-thumb-lines { display: grid; gap: 3px; margin-top: 6px; }
         .hpe-thumb-lines span { background: #e8eef8; border-radius: 999px; display: block; height: 4px; }
-        .hpe-thumb-delete { align-items: center; align-self: start; background: #fff; border: 1px solid #d0d7e2; border-radius: 6px; color: var(--hpe-danger); cursor: pointer; display: inline-flex; font-size: 13px; height: 22px; justify-content: center; line-height: 1; padding: 0; width: 22px; }
+        .hpe-root.thumbs-collapsed .hpe-thumb-rail { overflow: hidden; padding: 8px 5px; }
+        .hpe-root.thumbs-collapsed .hpe-thumb-list { display: none; }
+        .hpe-root.thumbs-collapsed .hpe-thumb-toggle { margin-left: 0; width: 28px; }
+        .hpe-thumb-menu { background: #fff; border: 1px solid #d0d7e2; border-radius: 8px; box-shadow: 0 12px 30px rgba(16,24,40,.18); display: none; min-width: 112px; padding: 4px; pointer-events: auto; position: fixed; z-index: 2147483647; }
+        .hpe-thumb-menu.open { display: block; }
+        .hpe-thumb-menu button { align-items: center; background: transparent; border: 0; border-radius: 6px; color: var(--hpe-danger); cursor: pointer; display: flex; font-size: 13px; gap: 8px; padding: 8px 10px; width: 100%; }
+        .hpe-thumb-menu button:hover { background: #fff1f1; }
         .hpe-minimap { background: rgba(255,255,255,.94); border: 1px solid #d0d7e2; border-radius: 10px; box-shadow: 0 12px 36px rgba(16,24,40,.18); display: none; left: 14px; overflow: hidden; padding: 8px; pointer-events: auto; position: fixed; top: calc(var(--hpe-top-height) + 12px); width: 116px; z-index: 2147483647; }
         .hpe-minimap.open { display: block; }
         .hpe-minimap-track { background: linear-gradient(#eef4ff, #fff); border: 1px solid #d8e0ec; border-radius: 7px; cursor: pointer; height: 168px; position: relative; }
@@ -259,6 +276,7 @@
         .hpe-topbar button[data-action="edit"], .hpe-icon-button[data-action="edit"] { --hpe-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 3l15 8-6 2-2 6L4 3Z'/%3E%3C/svg%3E"); }
         .hpe-topbar button[data-action="preview"], .hpe-icon-button[data-action="preview"] { --hpe-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7 4v16l13-8L7 4Z'/%3E%3C/svg%3E"); }
         .hpe-topbar button[data-action="togglePanel"], .hpe-icon-button[data-action="togglePanel"] { --hpe-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 5h16v3H4V5Zm0 5h7v9H4v-9Zm9 0h7v9h-7v-9Z'/%3E%3C/svg%3E"); }
+        .hpe-thumb-toggle[data-action="toggleThumbnails"], .hpe-icon-button[data-action="toggleThumbnails"] { --hpe-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 4h12l4 8-4 8H5V4Zm3 3v4h6V7H8Zm0 6v4h6v-4H8Z'/%3E%3C/svg%3E"); }
         .hpe-topbar button[data-action="prevSlide"], .hpe-icon-button[data-action="prevSlide"] { --hpe-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M14 6 8 12l6 6V6Z'/%3E%3C/svg%3E"); }
         .hpe-topbar button[data-action="nextSlide"], .hpe-icon-button[data-action="nextSlide"] { --hpe-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='m10 6 6 6-6 6V6Z'/%3E%3C/svg%3E"); }
         .hpe-topbar button[data-action="undo"], .hpe-icon-button[data-action="undo"] { --hpe-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M8 7V3L2 9l6 6v-4h6c3 0 5 2 5 5 0 .8-.2 1.6-.5 2.3 1.5-1.2 2.5-3 2.5-5.3 0-3.7-3-6-7-6H8Z'/%3E%3C/svg%3E"); }
@@ -358,7 +376,7 @@
         .hpe-toolbar button { border: 0; border-radius: 5px; background: transparent; cursor: pointer; font-size: 12px; min-width: 26px; padding: 6px; }
         .hpe-toolbar button:hover { background: #eef4ff; }
         .hpe-toolbar input[type="color"] { border: 0; background: transparent; cursor: pointer; height: 28px; padding: 2px; width: 30px; }
-        .hpe-preview .hpe-panel, .hpe-preview .hpe-topbar, .hpe-preview .hpe-appbar, .hpe-preview .hpe-statusbar, .hpe-preview .hpe-selection, .hpe-preview .hpe-toolbar, .hpe-preview .hpe-placement-preview { display: none; }
+        .hpe-preview .hpe-panel, .hpe-preview .hpe-topbar, .hpe-preview .hpe-appbar, .hpe-preview .hpe-statusbar, .hpe-preview .hpe-selection, .hpe-preview .hpe-toolbar, .hpe-preview .hpe-placement-preview, .hpe-preview .hpe-thumb-rail, .hpe-preview .hpe-thumb-menu, .hpe-preview .hpe-minimap { display: none; }
         .hpe-preview .hpe-previewbar { display: flex; }
         .hpe-progress-backdrop { align-items: center; background: rgba(10,26,51,.42); display: none; inset: 0; justify-content: center; pointer-events: auto; position: fixed; z-index: 2147483647; }
         .hpe-progress-backdrop.open { display: flex; }
@@ -400,10 +418,13 @@
       const root = doc.createElement("div");
       root.className = "hpe-root";
       root.setAttribute(UI, "true");
+      const logo = state.logoUrl
+        ? `<img src="${escapeHtml(state.logoUrl)}" alt="">`
+        : `<span class="hpe-logo-fallback">P</span>`;
       root.innerHTML = `
         <header class="hpe-appbar" ${UI}="true">
           <div class="hpe-brand">
-            <span class="hpe-logo">P</span>
+            <span class="hpe-logo">${logo}</span>
             <span class="hpe-title">HTML-PPT Editor</span>
             <span class="hpe-file" data-field="fileName"></span>
           </div>
@@ -417,7 +438,7 @@
         </header>
         <header class="hpe-previewbar" ${UI}="true">
           <div class="hpe-brand">
-            <span class="hpe-logo">P</span>
+            <span class="hpe-logo">${logo}</span>
             <span class="hpe-title">HTML-PPT Editor</span>
           </div>
           <div class="hpe-preview-title">&#39044;&#35272;&#27169;&#24335;</div>
@@ -427,8 +448,12 @@
           </div>
         </header>
         <aside class="hpe-thumb-rail" ${UI}="true" aria-label="Page thumbnails">
+          <button class="hpe-thumb-toggle" data-action="toggleThumbnails" type="button" title="收起或展开缩略图"></button>
           <div class="hpe-thumb-list" data-field="thumbList"></div>
         </aside>
+        <div class="hpe-thumb-menu" ${UI}="true" data-field="thumbMenu">
+          <button data-action="deleteThumbPage" type="button">删除页面</button>
+        </div>
         <div class="hpe-topbar" ${UI}="true" aria-label="HTML-PPT Editor toolbar">
           <div class="hpe-tool-group">
             <button data-action="edit" type="button" title="选择元素">选择</button>
@@ -462,7 +487,7 @@
             <h2>&#23646;&#24615;</h2>
             <div class="hpe-panel-actions">
               <button data-action="resetPanel" type="button" title="&#22238;&#21040;&#21491;&#20391;">&#24402;&#20301;</button>
-              <button data-action="togglePanel" type="button" title="&#25910;&#36215;&#23646;&#24615;&#38754;&#26495;">&#25910;&#36215;</button>
+              <button data-action="togglePanel" class="hpe-icon-button hpe-icon-only" type="button" title="&#25910;&#36215;&#23646;&#24615;&#38754;&#26495;"><span class="hpe-button-label">&#25910;&#36215;</span></button>
             </div>
           </div>
           <div class="hpe-field">
@@ -575,7 +600,7 @@
             <div class="hpe-progress-track"><div class="hpe-progress-fill" data-field="pdfProgressBar"></div></div>
           </section>
         </div>
-        <button class="hpe-panel-tab" data-action="togglePanel" type="button" ${UI}="true">属性</button>
+        <button class="hpe-panel-tab hpe-icon-button hpe-icon-only" data-action="togglePanel" type="button" ${UI}="true"><span class="hpe-button-label">属性</span></button>
       `;
       doc.body.appendChild(root);
       return {
@@ -584,6 +609,7 @@
         previewbar: root.querySelector(".hpe-previewbar"),
         panel: root.querySelector(".hpe-panel"),
         thumbRail: root.querySelector(".hpe-thumb-rail"),
+        thumbMenu: root.querySelector(".hpe-thumb-menu"),
         minimap: root.querySelector(".hpe-minimap"),
         panelHeader: root.querySelector("[data-panel-drag]"),
         panelTab: root.querySelector(".hpe-panel-tab"),
@@ -644,6 +670,7 @@
       });
       ui.root.addEventListener("click", onUiClick);
       ui.fields.thumbList.addEventListener("click", onThumbnailClick);
+      ui.fields.thumbList.addEventListener("contextmenu", onThumbnailContextMenu);
       ui.fields.thumbList.addEventListener("dragstart", onThumbnailDragStart);
       ui.fields.thumbList.addEventListener("dragover", onThumbnailDragOver);
       ui.fields.thumbList.addEventListener("drop", onThumbnailDrop);
@@ -693,6 +720,8 @@
     function onDocumentClick(event) {
       if (state.mode !== "edit") return;
       if (event.target.closest?.(`[${UI}]`)) return;
+      hideThumbnailMenu();
+      state.thumbSelectionActive = false;
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
@@ -839,8 +868,17 @@
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
+        hideThumbnailMenu();
+        state.thumbSelectionActive = false;
         if (typing) endTextEdit();
         clearSelection();
+        return;
+      }
+      if ((event.key === "Delete" || event.key === "Backspace") && state.thumbSelectionActive && !state.selected && !typing) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        deleteSlide(state.activeSlideIndex);
         return;
       }
       if (typing && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", " ", "PageUp", "PageDown", "Home", "End"].includes(event.key)) {
@@ -888,6 +926,7 @@
       event.preventDefault();
       event.stopPropagation();
       runAction(button.dataset.action);
+      if (!button.closest(".hpe-thumb-menu")) hideThumbnailMenu();
     }
 
     function runAction(action) {
@@ -915,6 +954,8 @@
         },
         diagnostics: exportDiagnostics,
         togglePanel,
+        toggleThumbnails,
+        deleteThumbPage: () => deleteSlide(Number.isInteger(state.thumbMenuIndex) ? state.thumbMenuIndex : state.activeSlideIndex),
         resetPanel,
         editText: beginTextEdit,
         bold: toggleBold,
@@ -1252,7 +1293,17 @@
       ui.fields.changeStatus.textContent = `修改 ${changedObjectCount()} 处`;
       ui.fields.zoom.value = String(state.zoom);
       ui.fields.zoomText.textContent = `${state.zoom}%`;
-      if (ui.fields.statusSlide) ui.fields.statusSlide.value = String(state.activeSlideIndex);
+      syncSlideSelectors(state.activeSlideIndex);
+    }
+
+    function syncSlideSelectors(index) {
+      const value = String(Math.max(0, index || 0));
+      [ui.fields.slide, ui.fields.statusSlide].forEach((select) => {
+        if (!select) return;
+        select.value = value;
+        const selectedIndex = Array.from(select.options).findIndex((option) => option.value === value);
+        if (selectedIndex >= 0) select.selectedIndex = selectedIndex;
+      });
     }
 
     function changedObjectCount() {
@@ -1387,6 +1438,21 @@
       adaptFloatingElements();
       updateSelectionBox();
       updatePlacementPreview();
+    }
+
+    function toggleThumbnails() {
+      state.thumbCollapsed = !state.thumbCollapsed;
+      hideThumbnailMenu();
+      syncThumbnailCollapsedState();
+      adaptFloatingElements();
+      updateSelectionBox();
+      updatePlacementPreview();
+    }
+
+    function syncThumbnailCollapsedState() {
+      const collapsed = state.reserveWorkspace && state.slides.length > 1 && state.thumbCollapsed;
+      ui.root.classList.toggle("thumbs-collapsed", collapsed);
+      doc.documentElement.classList.toggle("hpe-thumbs-collapsed", collapsed);
     }
 
     function resetPanel() {
@@ -1741,6 +1807,7 @@
       state.slides.forEach(ensureId);
       doc.documentElement.classList.toggle("hpe-has-slide-thumbs", state.reserveWorkspace && state.slides.length > 1);
       ui?.root?.classList.toggle("has-slides", state.slides.length > 1);
+      syncThumbnailCollapsedState();
     }
 
     function updateSlideUi() {
@@ -1778,8 +1845,9 @@
       const slide = state.slides[index];
       if (!slide) return;
       state.activeSlideIndex = index;
-      ui.fields.slide.value = String(index);
-      if (ui.fields.statusSlide) ui.fields.statusSlide.value = String(index);
+      state.slideScrollTarget = index;
+      state.slideScrollLockUntil = nowMs() + 700;
+      syncSlideSelectors(index);
       updateStatusBar();
       updateThumbnailActive();
       slide.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
@@ -1800,7 +1868,6 @@
             <div class="hpe-thumb-title">${escapeHtml(thumbnailTitle(slide, index))}</div>
             <div class="hpe-thumb-lines"><span style="width:88%"></span><span style="width:70%"></span><span style="width:52%"></span></div>
           </button>
-          <button class="hpe-thumb-delete" data-thumb-delete="${index}" type="button" title="删除第 ${index + 1} 页">×</button>
         `;
         ui.fields.thumbList.appendChild(item);
       });
@@ -1819,16 +1886,41 @@
     }
 
     function onThumbnailClick(event) {
-      const deleteButton = event.target.closest("[data-thumb-delete]");
-      if (deleteButton) {
-        event.preventDefault();
-        deleteSlide(Number(deleteButton.dataset.thumbDelete));
-        return;
-      }
       const thumb = event.target.closest("[data-thumb-index]");
       if (!thumb) return;
       event.preventDefault();
+      hideThumbnailMenu();
+      state.thumbSelectionActive = true;
+      clearSelection();
       goToSlide(Number(thumb.dataset.thumbIndex));
+    }
+
+    function onThumbnailContextMenu(event) {
+      const item = event.target.closest(".hpe-thumb-item");
+      if (!item || state.slides.length <= 1) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const index = Number(item.dataset.index);
+      state.thumbMenuIndex = index;
+      state.thumbSelectionActive = true;
+      clearSelection();
+      goToSlide(index);
+      showThumbnailMenu(event.clientX, event.clientY);
+    }
+
+    function showThumbnailMenu(x, y) {
+      if (!ui.thumbMenu) return;
+      ui.thumbMenu.classList.add("open");
+      const width = 124;
+      const height = 42;
+      ui.thumbMenu.style.left = `${Math.min(x, win.innerWidth - width - 8)}px`;
+      ui.thumbMenu.style.top = `${Math.min(y, win.innerHeight - height - 8)}px`;
+    }
+
+    function hideThumbnailMenu() {
+      if (!ui.thumbMenu) return;
+      ui.thumbMenu.classList.remove("open");
+      state.thumbMenuIndex = null;
     }
 
     function onThumbnailDragStart(event) {
@@ -1874,6 +1966,7 @@
       const slide = state.slides[index];
       const parent = slide?.parentElement;
       if (!slide || !parent) return;
+      hideThumbnailMenu();
       const next = slide.nextElementSibling;
       state.history.push({
         type: "delete",
@@ -1889,6 +1982,7 @@
       updateSlideUi();
       if (state.slides.length) goToSlide(state.activeSlideIndex);
       else updateStatusBar();
+      state.thumbSelectionActive = state.slides.length > 1;
       log("slide_delete", { index });
       scheduleDraft();
     }
@@ -1939,6 +2033,13 @@
 
     function updateActiveSlideFromScroll() {
       if (!state.slides.length) return;
+      if (nowMs() < state.slideScrollLockUntil && state.slides[state.slideScrollTarget]) {
+        state.activeSlideIndex = state.slideScrollTarget;
+        syncSlideSelectors(state.slideScrollTarget);
+        updateThumbnailActive();
+        updateStatusBar();
+        return;
+      }
       const metrics = getScrollMetrics();
       const viewportCenter = metrics.scrollTop + metrics.viewportHeight / 2;
       let closestIndex = state.activeSlideIndex;
@@ -1954,11 +2055,14 @@
       });
       if (closestIndex !== state.activeSlideIndex) {
         state.activeSlideIndex = closestIndex;
-        if (ui.fields.slide) ui.fields.slide.value = String(closestIndex);
-        if (ui.fields.statusSlide) ui.fields.statusSlide.value = String(closestIndex);
+        syncSlideSelectors(closestIndex);
         updateThumbnailActive();
         updateStatusBar();
       }
+    }
+
+    function nowMs() {
+      return win.performance?.now?.() || Date.now();
     }
 
     function updateMinimap() {

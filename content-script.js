@@ -11,6 +11,7 @@
   window.createHtmlPptEditor(window, {
     sourceName: document.title || location.hostname || "current-page",
     exportName: defaultExportName(),
+    logoUrl: chrome.runtime.getURL("assets/icons/icon32.png"),
     draftKey: `hpe:current:${location.href}`,
     reserveWorkspace: true,
     showWelcome: !localStorage.getItem("hpe:welcome-dismissed"),

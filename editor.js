@@ -64,6 +64,7 @@ async function loadHtml(html, name = "html-ppt.html") {
       activeEditor = window.createHtmlPptEditor(frame.contentWindow, {
         sourceName: name,
         exportName: activeFileName,
+        logoUrl: chrome.runtime.getURL("assets/icons/icon32.png"),
         draftKey: key,
         reserveWorkspace: true,
         onDraftSave: (payload) => window.HtmlPptDraftStore.save(key, payload),

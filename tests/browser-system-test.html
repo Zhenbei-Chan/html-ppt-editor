@@ -213,6 +213,7 @@
         const editor = window.createHtmlPptEditor(window, {
           sourceName: "browser-system-test.html",
           exportName: "browser-system-test-edited.html",
+          logoUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
           draftKey: "hpe:test:draft",
           reserveWorkspace: true,
           showWelcome: false
@@ -226,12 +227,28 @@
         assert("pointer decoration hidden in edit mode", document.getElementById("laser").style.display === "none");
         const floatingNav = document.getElementById("floatingNav");
         assert("floating nav adapted in edit viewport", floatingNav.getBoundingClientRect().right <= window.innerWidth - 64 + 1);
+        assert("title area uses logo image", Boolean(document.querySelector(".hpe-logo img")));
         assert("slide thumbnail rail appears for multi-page PPT", document.querySelectorAll(".hpe-thumb-item").length === 2);
         assert("slide thumbnail rail reserves left workspace", document.documentElement.classList.contains("hpe-has-slide-thumbs"));
+        assert("slide thumbnail delete button is not always visible", !document.querySelector(".hpe-thumb-delete"));
+        click(document.querySelector("[data-action='toggleThumbnails']"));
+        await sleep(40);
+        assert("slide thumbnail rail can collapse", document.documentElement.classList.contains("hpe-thumbs-collapsed"));
+        click(document.querySelector("[data-action='toggleThumbnails']"));
+        await sleep(40);
         click(document.querySelector("[data-thumb-index='1']"));
         await sleep(40);
         assert("slide thumbnail click changes current page", document.querySelector("[data-field='slide']").value === "1");
+        assert("bottom page selector syncs after thumbnail click", document.querySelector("[data-field='statusSlide']").value === "1");
         click(document.querySelector("[data-thumb-index='0']"));
+        await sleep(40);
+        const statusSlide = document.querySelector("[data-field='statusSlide']");
+        statusSlide.value = "1";
+        statusSlide.dispatchEvent(new Event("change", { bubbles: true }));
+        await sleep(40);
+        assert("bottom page selector keeps chosen page text", statusSlide.value === "1");
+        statusSlide.value = "0";
+        statusSlide.dispatchEvent(new Event("change", { bubbles: true }));
         await sleep(40);
 
         const title = document.querySelector(".title");
@@ -360,9 +377,17 @@
         document.querySelector(".hpe-thumb-item[data-index='0']").dispatchEvent(dropEvent);
         await sleep(80);
         assert("slide thumbnail drag reorders DOM pages", document.body.querySelector(".slide").id === "slide-2");
-        click(document.querySelector("[data-thumb-delete='0']"));
+        document.querySelector(".hpe-thumb-item[data-index='0']").dispatchEvent(new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          clientX: 80,
+          clientY: 140
+        }));
+        await sleep(40);
+        assert("slide thumbnail context menu opens delete action", document.querySelector(".hpe-thumb-menu").classList.contains("open"));
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete", bubbles: true, cancelable: true }));
         await sleep(80);
-        assert("slide thumbnail delete removes selected page", !document.getElementById("slide-2"));
+        assert("selected slide thumbnail can be deleted by Delete key", !document.getElementById("slide-2"));
         assert("slide thumbnail rail hides when only one page remains", document.querySelectorAll(".hpe-thumb-item").length === 0);
 
         document.body.style.minHeight = "2600px";

@@ -14,7 +14,7 @@ Testing and acceptance. The project is ready for public GitHub source sharing as
 
 ## Latest Completed Task
 
-- `T-922`: Page thumbnail navigation for multi-page PPT and minimap navigation for long HTML pages.
+- `T-923`: Thumbnail rail collapse, thumbnail page deletion UX, header logo, and bottom page selector sync.
 
 ## Confirmed Open Source Files
 
