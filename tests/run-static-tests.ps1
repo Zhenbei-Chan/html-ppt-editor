@@ -6,8 +6,11 @@ $popup = Get-Content -Raw -Encoding UTF8 (Join-Path $root "popup.html")
 $editor = Get-Content -Raw -Encoding UTF8 (Join-Path $root "editor.html")
 $editorJs = Get-Content -Raw -Encoding UTF8 (Join-Path $root "editor.js")
 $readme = Get-Content -Raw -Encoding UTF8 (Join-Path $root "README.md")
+$readmeZhPath = Join-Path $root "README.zh-CN.md"
+$readmeZh = if (Test-Path $readmeZhPath) { Get-Content -Raw -Encoding UTF8 $readmeZhPath } else { "" }
 $manifest = Get-Content -Raw (Join-Path $root "manifest.json") | ConvertFrom-Json
-$readmeContainsEnglishAndChinese = $readme.Contains("HTML-PPT Editor is a Chrome extension") -and $readme.Contains("Features /") -and $readme.Contains("Installation For Development /") -and $readme.Contains("License /")
+$readmeIsEnglishOnly = $readme.Contains("README.zh-CN.md") -and $readme.Contains("## Features") -and $readme.Contains("## Installation For Development") -and $readme.Contains("## License") -and -not $readme.Contains("Features /")
+$readmeZhExists = (Test-Path $readmeZhPath) -and $readmeZh.Contains("[English](README.md)") -and $readmeZh.Contains("HTML-PPT Editor") -and $readmeZh.Contains("MIT")
 
 $results = New-Object System.Collections.Generic.List[object]
 
@@ -62,7 +65,7 @@ Add-Result "pdf_export_has_progress_ui" ($core -match "hpe-progress-backdrop" -a
 Add-Result "pdf_export_full_deck_default" ($core.Contains("exportPdf: () => exportPdf({ currentOnly: false })") -and $core.Contains("getPdfSources(currentOnly)"))
 Add-Result "pdf_export_preserves_page_size" ($core -match "getPdfPageSize" -and $core.Contains("format: [pageSize.width, pageSize.height]") -and $core.Contains("windowWidth: pageSize.width"))
 Add-Result "pdf_progress_copy_is_stable" (-not $core.Contains("\u5df2\u5b8c\u6210") -and $core.Contains("\u6b63\u5728\u5904\u7406\u7b2c"))
-Add-Result "opensource_docs_exist" ((Test-Path (Join-Path $root "LICENSE")) -and (Test-Path (Join-Path $root "CONTRIBUTING.md")) -and (Test-Path (Join-Path $root "SECURITY.md")) -and $readmeContainsEnglishAndChinese)
+Add-Result "opensource_docs_exist" ((Test-Path (Join-Path $root "LICENSE")) -and (Test-Path (Join-Path $root "CONTRIBUTING.md")) -and (Test-Path (Join-Path $root "SECURITY.md")) -and $readmeIsEnglishOnly -and $readmeZhExists)
 Add-Result "slide_thumbnail_navigation_exists" ($core -match "hpe-thumb-rail" -and $core -match "renderSlideThumbnails" -and $core -match "onThumbnailClick" -and $core -match "reorderSlides" -and $core -match "deleteSlide")
 Add-Result "long_page_minimap_exists" ($core -match "hpe-minimap" -and $core -match "onEditorScroll" -and $core -match "onMinimapClick" -and $core -match "getScrollMetrics" -and $core -match "scheduleMinimapHide")
 Add-Result "long_page_minimap_renders_page_structure" ($core -match "hpe-minimap-content" -and $core -match "collectMinimapNodes" -and $core -match "minimapNodeType" -and $core -match "hpe-minimap-node")

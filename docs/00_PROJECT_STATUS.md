@@ -14,11 +14,12 @@ Testing and acceptance. The project is ready for public GitHub source sharing as
 
 ## Latest Completed Task
 
-- `T-924`: Long-page minimap now renders a lightweight page-like structure and supports dragging the viewport indicator.
+- `T-925`: GitHub README split into separate English and Chinese documents.
 
 ## Confirmed Open Source Files
 
 - `README.md`
+- `README.zh-CN.md`
 - `LICENSE`
 - `CONTRIBUTING.md`
 - `SECURITY.md`
@@ -38,8 +39,8 @@ Testing and acceptance. The project is ready for public GitHub source sharing as
 
 Before marking the product as stable, validate 15/15 real AI-generated HTML PPT samples. Current public release wording should say "early prototype".
 
-Some early internal Chinese workflow notes are legacy artifacts and may require encoding cleanup before they are presented as official external documentation. Public entry points should be `README.md`, `INSTALL_DEV.md`, `CONTRIBUTING.md`, `SECURITY.md`, and `LICENSE`.
+Some early internal Chinese workflow notes are legacy artifacts and may require encoding cleanup before they are presented as official external documentation. Public entry points should be `README.md`, `README.zh-CN.md`, `INSTALL_DEV.md`, `CONTRIBUTING.md`, `SECURITY.md`, and `LICENSE`.
 
 ## Next Action
 
-Initialize a GitHub repository, commit source files, and push to a public repo after confirming repository name and visibility.
+Continue sample validation and keep the GitHub release wording aligned with the current early-prototype status.
