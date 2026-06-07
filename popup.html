@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>HTML-PPT Editor</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main class="popup">
+      <header class="popup-header">
+        <div class="brand">
+          <span class="mark" aria-hidden="true">▣</span>
+          <h1>HTML-PPT Editor</h1>
+        </div>
+        <span class="version">v0.1.0</span>
+      </header>
+
+      <section class="actions">
+        <input id="popupFileInput" type="file" accept=".html,.htm,text/html">
+        <button id="openEditor" class="primary" type="button"><span>&#9635;</span>打开本地 HTML PPT 文件</button>
+        <button id="editCurrent" type="button"><span>&#9998;</span>编辑当前页面</button>
+      </section>
+
+      <section class="links">
+        <button id="openSampleSlides" type="button"><span>▦</span>体验多页示例</button>
+        <button id="openSampleLong" type="button"><span>▤</span>体验长页面示例</button>
+        <button id="showDiagnosticsInfo" type="button"><span>!</span>问题信息</button>
+        <button id="showHelp" type="button"><span>?</span>帮助</button>
+      </section>
+
+      <aside class="notice">
+        如需编辑已经在 Chrome 中打开的本地文件，请在插件详情中开启“允许访问文件网址”。
+      </aside>
+
+      <p id="status" class="status" role="status"></p>
+      <footer>
+        <span>v0.1.0 · 为 Chrome 打造</span>
+        <span>本地编辑，本地保存</span>
+      </footer>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

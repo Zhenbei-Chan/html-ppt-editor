@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>HTML-PPT Editor 多页示例</title>
+    <style>
+      body {
+        margin: 0;
+        background: #111827;
+        color: #111827;
+        font-family: "HarmonyOS Sans", "Microsoft YaHei", Arial, sans-serif;
+        overflow-x: hidden;
+      }
+      .slide {
+        position: relative;
+        width: 100vw;
+        min-height: 100vh;
+        padding: 72px 88px;
+        background: #f8fafc;
+        border-bottom: 1px solid #d0d5dd;
+      }
+      .slide:nth-child(2) { background: #fefce8; }
+      .slide:nth-child(3) { background: #eefcf5; }
+      h1 {
+        font-size: 64px;
+        line-height: 1.05;
+        margin: 0 0 28px;
+      }
+      p {
+        font-size: 26px;
+        line-height: 1.45;
+        max-width: 720px;
+      }
+      .note {
+        position: absolute;
+        right: 90px;
+        top: 140px;
+        width: 280px;
+        border: 2px solid #2563eb;
+        padding: 18px;
+        font-size: 22px;
+      }
+      .shape {
+        position: absolute;
+        right: 110px;
+        bottom: 100px;
+        width: 220px;
+        height: 160px;
+        background: linear-gradient(135deg, #22c55e, #2563eb);
+        border-radius: 8px;
+      }
+      nav {
+        position: fixed;
+        bottom: 18px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 50;
+      }
+      nav a {
+        background: #111827;
+        border-radius: 999px;
+        color: #fff;
+        display: inline-block;
+        margin: 0 4px;
+        padding: 8px 14px;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <a href="#slide-1">封面</a>
+      <a href="#slide-2">问题</a>
+      <a href="#slide-3">方案</a>
+    </nav>
+    <section id="slide-1" class="slide">
+      <h1>AI HTML PPT<br>可视化编辑示例</h1>
+      <p>点击标题或正文即可修改文字，拖动右侧说明框可以调整位置。</p>
+      <div class="note">这是一个可以移动和缩放的文本框。</div>
+      <div class="shape" role="img" aria-label="示例图片块"></div>
+    </section>
+    <section id="slide-2" class="slide">
+      <h1>常见修改需求</h1>
+      <ol>
+        <li>修改标题表达</li>
+        <li>调整文字换行</li>
+        <li>移动文本框位置</li>
+      </ol>
+      <p>标准有序列表在调整顺序后，应继续从 1 开始编号。</p>
+    </section>
+    <section id="slide-3" class="slide">
+      <h1>导出新 HTML</h1>
+      <p>导出前先进入预览模式，确认导航、翻页和布局正常，再保存新的 HTML 文件。</p>
+      <button onclick="location.hash='slide-1'">返回封面</button>
+    </section>
+  </body>
+</html>

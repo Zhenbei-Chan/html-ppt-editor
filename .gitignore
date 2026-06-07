@@ -1,0 +1,28 @@
+# Local OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local/generated artifacts
+dist/*.zip
+*.log
+*.tmp
+
+# Legacy internal workflow drafts kept locally
+0[1-9]_*.md
+HTML-PPT-Editor-PRD.md
+SAMPLE_TEST_RECORD.md
+SYSTEM_TEST_PLAN.md
+TEST_REPORT.md
+docs/0[1-9]_*.md
+prompts/
+
+# Test/runtime outputs
+coverage/
+test-results/
+playwright-report/
+
+# Secrets
+.env
+.env.*

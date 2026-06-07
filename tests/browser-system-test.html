@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <title>HTML-PPT Editor Browser System Test</title>
+    <style>
+      body { margin: 0; font-family: Arial, sans-serif; }
+      .slide {
+        position: relative;
+        width: 960px;
+        height: 540px;
+        padding: 48px;
+      }
+      .title { font-size: 42px; }
+      .box {
+        position: absolute;
+        left: 120px;
+        top: 180px;
+        width: 360px;
+        font-size: 24px;
+      }
+      .laser-pointer {
+        position: fixed;
+        left: 20px;
+        top: 20px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: red;
+        pointer-events: none;
+      }
+      .icon-row {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        position: absolute;
+        left: 140px;
+        top: 360px;
+        width: 680px;
+        font-size: 28px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+      .icon-row svg {
+        flex: 0 0 auto;
+        width: 42px;
+        height: 42px;
+      }
+      .floating-nav {
+        position: fixed;
+        left: 50%;
+        bottom: 14px;
+        transform: translateX(-50%);
+        width: 92vw;
+        max-width: 1120px;
+        height: 44px;
+        border-radius: 22px;
+        background: rgba(255, 255, 255, .94);
+        border: 1px solid #cfd8ea;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="slide" id="slide-1">
+      <h1 class="title">标题文字</h1>
+      <p class="box">这是一段可编辑文字，用于测试局部颜色。</p>
+      <ol id="ordered">
+        <li>第一项</li>
+        <li>第二项</li>
+      </ol>
+      <div class="icon-row" id="iconRow">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle></svg>
+        <span id="iconText">Icon text should keep one line</span>
+      </div>
+      <div id="flowProbe">Flow probe should stay in normal flow unless free-position is enabled</div>
+      <div id="legacyConverted" data-hpe-free-position="true" style="position:absolute;left:40px;top:40px;width:120px;min-height:20px;">Legacy converted</div>
+    </section>
+    <section class="slide" id="slide-2" style="display:none" aria-hidden="true">
+      <h1>第二页</h1>
+    </section>
+    <button id="navButton" type="button">下一页</button>
+    <div class="floating-nav" id="floatingNav">Floating nav</div>
+    <div class="laser-pointer" id="laser"></div>
+    <script src="../editor-core.js"></script>
+    <script>
+      const results = [];
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      window.__errors = [];
+      window.addEventListener("error", (event) => window.__errors.push(event.message));
+      window.addEventListener("unhandledrejection", (event) => window.__errors.push(event.reason?.message || String(event.reason)));
+
+      function assert(name, condition, detail = "") {
+        results.push({ name, pass: Boolean(condition), detail });
+      }
+
+      function click(target, options = {}) {
+        target.dispatchEvent(new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          clientX: options.x || 140,
+          clientY: options.y || 140
+        }));
+      }
+
+      function dblclick(target, options = {}) {
+        target.dispatchEvent(new MouseEvent("dblclick", {
+          bubbles: true,
+          cancelable: true,
+          clientX: options.x || 140,
+          clientY: options.y || 140
+        }));
+      }
+
+      async function run() {
+        const originalCreateObjectUrl = URL.createObjectURL;
+        const originalAnchorClick = HTMLAnchorElement.prototype.click;
+        window.__capturedExport = "";
+        URL.createObjectURL = (blob) => {
+          blob.text().then((text) => {
+            window.__capturedExport = text;
+          });
+          return "blob:test";
+        };
+        HTMLAnchorElement.prototype.click = function () {};
+        window.__printCount = 0;
+        window.__printSawHiddenUi = false;
+        window.__printPageCount = 0;
+        window.__printSawLandscape = false;
+        window.__printSawHiddenSlideClone = false;
+        window.__printPreservesSlideStyle = false;
+        window.__printSheetCount = 0;
+        window.__printUsesScaleWrapper = false;
+        window.__printUsesA4Landscape = false;
+        window.__printWindowClosed = false;
+        window.__printDocumentClosedBeforePrint = false;
+        window.__printWindowHtml = "";
+        window.__pdfCaptureCount = 0;
+        window.__pdfSavedName = "";
+        window.__pdfPageCount = 0;
+        window.__pdfAddImageCount = 0;
+        window.__pdfProgressSeen = false;
+        window.__pdfCapturedNodeIds = [];
+        window.html2canvas = async (node) => {
+          window.__pdfCaptureCount += 1;
+          window.__pdfCapturedNodeIds.push(node.id || node.className || node.tagName);
+          window.__pdfProgressSeen = window.__pdfProgressSeen || document.querySelector(".hpe-progress-backdrop")?.classList.contains("open");
+          return {
+            width: parseInt(node.style.width, 10) || 960,
+            height: parseInt(node.style.height, 10) || 540,
+            toDataURL: () => "data:image/jpeg;base64,test"
+          };
+        };
+        window.jspdf = {
+          jsPDF: class {
+            constructor(options) {
+              this.options = options;
+              window.__pdfPageCount = 1;
+            }
+            addPage() { window.__pdfPageCount += 1; }
+            addImage() { window.__pdfAddImageCount += 1; }
+            save(name) { window.__pdfSavedName = name; }
+          }
+        };
+        const originalOpen = window.open;
+        window.open = () => {
+          const printDoc = {
+            _html: "",
+            open() {},
+            write(html) {
+              this._html += html;
+              window.__printWindowHtml = this._html;
+            },
+            close() { this._closed = true; }
+          };
+          return {
+            document: printDoc,
+            focus() {},
+            close() { window.__printWindowClosed = true; },
+            addEventListener(type, callback) { this._afterprint = type === "afterprint" ? callback : null; },
+            print() {
+              window.__printCount += 1;
+              window.__printDocumentClosedBeforePrint = Boolean(printDoc._closed);
+              const parsed = new DOMParser().parseFromString(printDoc._html, "text/html");
+              window.__printSawHiddenUi = !parsed.querySelector(".hpe-root");
+              window.__printPageCount = parsed.querySelectorAll(".hpe-print-root .hpe-print-page").length;
+              window.__printSheetCount = parsed.querySelectorAll(".hpe-print-root .hpe-print-sheet").length;
+              window.__printUsesScaleWrapper = printDoc._html.includes("hpe-print-scale") && printDoc._html.includes("--hpe-print-scale");
+              window.__printUsesA4Landscape = printDoc._html.includes("@page { size:") && printDoc._html.includes("px") && printDoc._html.includes("hpe-print-sheet");
+              window.__printSawLandscape = window.__printUsesA4Landscape;
+              window.__printSawHiddenSlideClone = Boolean(parsed.querySelector("#slide-2"));
+              const slideClone = parsed.querySelector("#slide-1");
+              window.__printPreservesSlideStyle = slideClone?.classList.contains("slide") && !slideClone.style.position && !slideClone.style.transform;
+              this._afterprint?.();
+            }
+          };
+        };
+        let fullscreenElementValue = null;
+        Object.defineProperty(document, "fullscreenElement", {
+          configurable: true,
+          get: () => fullscreenElementValue
+        });
+        document.documentElement.requestFullscreen = () => {
+          fullscreenElementValue = document.documentElement;
+          document.dispatchEvent(new Event("fullscreenchange"));
+          return Promise.resolve();
+        };
+        document.exitFullscreen = () => {
+          fullscreenElementValue = null;
+          document.dispatchEvent(new Event("fullscreenchange"));
+          return Promise.resolve();
+        };
+
+        const editor = window.createHtmlPptEditor(window, {
+          sourceName: "browser-system-test.html",
+          exportName: "browser-system-test-edited.html",
+          draftKey: "hpe:test:draft",
+          reserveWorkspace: true,
+          showWelcome: false
+        });
+
+        await sleep(100);
+
+        assert("property panel hidden by default", document.querySelector(".hpe-root").classList.contains("panel-collapsed"));
+        assert("shell layout is enabled", document.documentElement.classList.contains("hpe-shell-layout"));
+        assert("html content area reserves tool rail by default", Math.round(document.body.getBoundingClientRect().width) <= window.innerWidth - 64);
+        assert("pointer decoration hidden in edit mode", document.getElementById("laser").style.display === "none");
+        const floatingNav = document.getElementById("floatingNav");
+        assert("floating nav adapted in edit viewport", floatingNav.getBoundingClientRect().right <= window.innerWidth - 64 + 1);
+        assert("slide thumbnail rail appears for multi-page PPT", document.querySelectorAll(".hpe-thumb-item").length === 2);
+        assert("slide thumbnail rail reserves left workspace", document.documentElement.classList.contains("hpe-has-slide-thumbs"));
+        click(document.querySelector("[data-thumb-index='1']"));
+        await sleep(40);
+        assert("slide thumbnail click changes current page", document.querySelector("[data-field='slide']").value === "1");
+        click(document.querySelector("[data-thumb-index='0']"));
+        await sleep(40);
+
+        const title = document.querySelector(".title");
+        click(title);
+        await sleep(30);
+        assert("single click selects without editing", !title.isContentEditable);
+        assert("one selection box after select", document.querySelectorAll(".hpe-selection:not(.hidden)").length === 1);
+
+        dblclick(title);
+        await sleep(30);
+        assert("double click enters edit mode", title.isContentEditable);
+        assert("only one dashed edit box", document.querySelectorAll(".hpe-selection.editing").length === 1);
+        assert("contenteditable outline is removed", getComputedStyle(title).outlineStyle === "none");
+        title.textContent = "Edited title";
+        title.dispatchEvent(new InputEvent("input", { bubbles: true }));
+        const textArrowEvent = new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true, cancelable: true });
+        assert("text editing arrow key keeps caret behavior", title.dispatchEvent(textArrowEvent));
+        await sleep(950);
+        assert("draft save keeps text editing active", title.isContentEditable);
+        click(document.body, { x: 20, y: 20 });
+        await sleep(30);
+        assert("blank click clears selection", document.querySelector(".hpe-selection").classList.contains("hidden"));
+        click(title);
+        await sleep(30);
+
+        const selectionRight = document.querySelector(".hpe-selection").getBoundingClientRect().right;
+        assert("selection box avoids side workspace", selectionRight <= window.innerWidth - 64);
+
+        click(document.querySelector("[data-action='togglePanel']"));
+        await sleep(30);
+        assert("property panel expands from side rail", !document.querySelector(".hpe-root").classList.contains("panel-collapsed"));
+        assert("expanded shell layout reserves property panel", Math.round(document.body.getBoundingClientRect().width) <= window.innerWidth - 352);
+        assert("floating nav follows expanded workspace", floatingNav.getBoundingClientRect().right <= window.innerWidth - 352 + 1);
+        click(document.querySelector("[data-action='togglePanel']"));
+        await sleep(30);
+        assert("property panel collapses into side rail", document.querySelector(".hpe-root").classList.contains("panel-collapsed"));
+        assert("fullscreen is icon control", document.querySelector("[data-action='fullscreen']").classList.contains("hpe-icon-button"));
+        assert("status bar has page selector", Boolean(document.querySelector("[data-field='statusSlide']")));
+        assert("top title has no duplicate PDF export", !document.querySelector(".hpe-appbar [data-action='exportPdf']"));
+        assert("export modal PDF uses icon control", document.querySelector(".hpe-export-modal [data-action='exportPdf']").classList.contains("hpe-icon-button"));
+        click(document.querySelector(".hpe-appbar [data-action='saveDraft']"));
+        await sleep(120);
+        assert("save button gives draft feedback", document.querySelector("[data-field='draftStatus']").textContent.includes("保存"));
+        assert("save button gives top feedback", document.querySelector("[data-field='saveFeedback']").classList.contains("visible"));
+
+        const flowProbe = document.getElementById("flowProbe");
+        click(flowProbe, { x: 180, y: 320 });
+        await sleep(30);
+        document.querySelector(".hpe-move").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 1, clientX: 180, clientY: 320 }));
+        document.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, pointerId: 1, clientX: 220, clientY: 350 }));
+        document.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 1, clientX: 220, clientY: 350 }));
+        await sleep(30);
+        assert("flow element drag does not auto absolute-position", flowProbe.style.position !== "absolute");
+
+        const iconRow = document.getElementById("iconRow");
+        click(document.getElementById("iconText"), { x: 320, y: 380 });
+        await sleep(30);
+        const iconRect = iconRow.getBoundingClientRect();
+        const beforeMoveLeft = Math.round(iconRect.left);
+        const beforeMoveWidth = Math.round(iconRect.width);
+        const beforeMoveHeight = Math.round(iconRect.height);
+        document.querySelector(".hpe-move").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 1, clientX: 260, clientY: 360 }));
+        document.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, pointerId: 1, clientX: 300, clientY: 390 }));
+        document.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 1, clientX: 300, clientY: 390 }));
+        await sleep(30);
+        assert("icon text click selects whole icon row", Math.abs(Math.round(iconRow.getBoundingClientRect().left) - beforeMoveLeft) >= 20);
+        assert("moving icon row keeps icon", Boolean(iconRow.querySelector("svg")));
+        assert("moving text box keeps width", Math.round(iconRow.getBoundingClientRect().width) === beforeMoveWidth);
+        assert("moving text box does not force fixed height", !iconRow.style.height || Math.round(iconRow.getBoundingClientRect().height) >= beforeMoveHeight);
+
+        const paragraph = document.querySelector(".box");
+        click(paragraph);
+        dblclick(paragraph);
+        await sleep(30);
+        const boldRange = document.createRange();
+        boldRange.selectNodeContents(paragraph);
+        const textSelection = getSelection();
+        textSelection.removeAllRanges();
+        textSelection.addRange(boldRange);
+        document.dispatchEvent(new Event("selectionchange"));
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "b", ctrlKey: true, bubbles: true, cancelable: true }));
+        await sleep(30);
+        assert("selected text can become bold", paragraph.querySelector("span")?.style.fontWeight === "700");
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "b", ctrlKey: true, bubbles: true, cancelable: true }));
+        await sleep(30);
+        assert("selected text can cancel bold", paragraph.querySelector("span span")?.style.fontWeight === "400");
+        editor.setEditMode();
+
+        click(document.querySelector("[data-action='fullscreen']"));
+        await sleep(30);
+        assert("fullscreen hides preview bar", getComputedStyle(document.querySelector(".hpe-previewbar")).display === "none");
+        const slideBeforeFullscreenKey = document.querySelector("[data-field='slide']").value;
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "PageDown", bubbles: true, cancelable: true }));
+        await sleep(30);
+        assert("fullscreen PageDown changes slide", document.querySelector("[data-field='slide']").value !== slideBeforeFullscreenKey);
+        editor.setEditMode();
+
+        click(document.querySelector(".hpe-topbar [data-action='exportPdf']"));
+        await sleep(1200);
+        assert("PDF export avoids browser print", window.__printCount === 0);
+        const pdfStatus = encodeURIComponent(document.querySelector("[data-field='draftStatus']")?.textContent || "").slice(0, 80);
+        const pdfDebug = `captures=${window.__pdfCaptureCount};images=${window.__pdfAddImageCount};saved=${window.__pdfSavedName};pages=${window.__pdfPageCount};status=${pdfStatus};errors=${window.__errors.length}`;
+        assert("PDF export captures all slides", window.__pdfCaptureCount === 2, pdfDebug);
+        assert("PDF export creates one image per page", window.__pdfAddImageCount === 2, pdfDebug);
+        assert("PDF export saves a PDF file", window.__pdfSavedName.endsWith(".pdf"), pdfDebug);
+        assert("PDF export uses plugin progress", window.__pdfProgressSeen, pdfDebug);
+        assert("PDF export creates all PDF pages", window.__pdfPageCount === 2, pdfDebug);
+        assert("PDF export captures original slide nodes", window.__pdfCapturedNodeIds.join(",") === "slide-1,slide-2", window.__pdfCapturedNodeIds.join(","));
+        assert("PDF export restores hidden slide display", document.getElementById("slide-2").style.display === "none");
+        assert("PDF export restores edit mode", document.documentElement.classList.contains("hpe-editing-active"));
+
+        const dragStore = {};
+        const dragEvent = new Event("dragstart", { bubbles: true, cancelable: true });
+        Object.defineProperty(dragEvent, "dataTransfer", {
+          value: {
+            setData(key, value) { dragStore[key] = value; },
+            getData(key) { return dragStore[key]; },
+            setDragImage() {}
+          }
+        });
+        document.querySelector(".hpe-thumb-item[data-index='1']").dispatchEvent(dragEvent);
+        const dropEvent = new Event("drop", { bubbles: true, cancelable: true });
+        Object.defineProperty(dropEvent, "dataTransfer", {
+          value: { getData(key) { return dragStore[key]; } }
+        });
+        document.querySelector(".hpe-thumb-item[data-index='0']").dispatchEvent(dropEvent);
+        await sleep(80);
+        assert("slide thumbnail drag reorders DOM pages", document.body.querySelector(".slide").id === "slide-2");
+        click(document.querySelector("[data-thumb-delete='0']"));
+        await sleep(80);
+        assert("slide thumbnail delete removes selected page", !document.getElementById("slide-2"));
+        assert("slide thumbnail rail hides when only one page remains", document.querySelectorAll(".hpe-thumb-item").length === 0);
+
+        document.body.style.minHeight = "2600px";
+        document.body.scrollTop = 500;
+        document.body.dispatchEvent(new Event("scroll", { bubbles: true }));
+        await sleep(40);
+        assert("long page minimap appears while scrolling", document.querySelector(".hpe-minimap").classList.contains("open"));
+        const minimap = document.querySelector(".hpe-minimap");
+        minimap.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
+        await sleep(980);
+        assert("long page minimap stays visible while hovering", minimap.classList.contains("open"));
+        const beforeMinimapClickTop = Math.max(document.body.scrollTop, document.documentElement.scrollTop, window.scrollY);
+        const track = document.querySelector("[data-field='minimapTrack']");
+        const trackRect = track.getBoundingClientRect();
+        track.dispatchEvent(new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          clientX: trackRect.left + 8,
+          clientY: trackRect.bottom - 8
+        }));
+        await sleep(180);
+        assert("long page minimap click jumps page position", Math.max(document.body.scrollTop, document.documentElement.scrollTop, window.scrollY) > beforeMinimapClickTop);
+        minimap.dispatchEvent(new MouseEvent("mouseleave", { bubbles: true }));
+
+        click(document.querySelector("[data-action='addText']"));
+        document.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: 260, clientY: 260 }));
+        await sleep(30);
+        assert("text placement preview is visible", !document.querySelector(".hpe-placement-preview").classList.contains("hidden"));
+        click(document.body, { x: 260, y: 260 });
+        await sleep(30);
+        assert("text box placed by canvas click", Array.from(document.querySelectorAll("[data-hpe-free-position='true']")).some((el) => el.textContent.includes("请输入文字")));
+        assert("text placement preview hides after placement", document.querySelector(".hpe-placement-preview").classList.contains("hidden"));
+
+        let arrowReachedPageHandler = false;
+        document.addEventListener("keydown", () => { arrowReachedPageHandler = true; }, { once: true });
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true, cancelable: true }));
+        await sleep(10);
+        assert("arrow key stopped in edit mode", !arrowReachedPageHandler);
+
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "s", ctrlKey: true, bubbles: true, cancelable: true }));
+        await sleep(150);
+        const savedDraft = await window.HtmlPptDraftStore.get("hpe:test:draft");
+        assert("draft saved to IndexedDB store", Boolean(savedDraft?.html));
+
+        let previewClickCount = 0;
+        document.getElementById("navButton").addEventListener("click", () => { previewClickCount += 1; });
+        editor.setPreviewMode();
+        await sleep(30);
+        click(document.getElementById("navButton"));
+        await sleep(30);
+        assert("preview mode restores page click handlers", previewClickCount === 1);
+        editor.setEditMode();
+
+        editor.exportHtml();
+        await sleep(100);
+        const exported = window.__capturedExport;
+        const exportedDoc = new DOMParser().parseFromString(exported, "text/html");
+        assert("export produced html", exported.includes("<html"));
+        assert("export removes editor root", !exportedDoc.querySelector(".hpe-root"));
+        assert("export removes editor style tag", !exportedDoc.querySelector("#hpe-editor-style"));
+        assert("export removes element internal ids", !exportedDoc.querySelector("[data-hpe-id]"));
+        assert("export removes free position attributes", !exportedDoc.querySelector("[data-hpe-free-position]"));
+        assert("export removes position origin attributes", !exportedDoc.querySelector("[data-hpe-position-origin]"));
+        assert("export removes floating adaptation marker", !exportedDoc.querySelector("[data-hpe-floating-adapted]"));
+        assert("export stabilizes legacy converted absolute styles", !exportedDoc.getElementById("legacyConverted").style.position && !exportedDoc.getElementById("legacyConverted").style.left);
+        assert("export keeps originally positioned element adjustments", Boolean(exportedDoc.getElementById("iconRow").style.left), exportedDoc.getElementById("iconRow").getAttribute("style") || "");
+        assert("export removes editing class from html", !exportedDoc.documentElement.classList.contains("hpe-editing-active"));
+
+        URL.createObjectURL = originalCreateObjectUrl;
+        HTMLAnchorElement.prototype.click = originalAnchorClick;
+        window.open = originalOpen;
+
+        document.body.innerHTML = `<pre id="results">${JSON.stringify(results, null, 2)}</pre>`;
+        document.title = results.every((item) => item.pass) ? "PASS" : "FAIL";
+      }
+
+      run().catch((error) => {
+        document.body.innerHTML = `<pre id="results">${JSON.stringify([{ name: "test runtime error", pass: false, detail: error.stack || error.message }], null, 2)}</pre>`;
+        document.title = "ERROR";
+      });
+    </script>
+  </body>
+</html>

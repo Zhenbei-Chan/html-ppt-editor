@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>HTML-PPT Editor 长页面示例</title>
+    <style>
+      body {
+        margin: 0;
+        color: #172033;
+        background: #fbfcfe;
+        font-family: "HarmonyOS Sans", "Microsoft YaHei", Arial, sans-serif;
+      }
+      header, section {
+        padding: 72px clamp(28px, 8vw, 108px);
+      }
+      header {
+        background: #e0f2fe;
+      }
+      h1 {
+        font-size: 56px;
+        margin: 0 0 20px;
+      }
+      h2 {
+        font-size: 36px;
+      }
+      p, li {
+        font-size: 22px;
+        line-height: 1.55;
+        max-width: 820px;
+      }
+      .callout {
+        border-left: 6px solid #f97316;
+        background: #fff7ed;
+        margin-top: 28px;
+        padding: 20px 24px;
+        width: min(680px, 90vw);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>长页面式 HTML 汇报</h1>
+      <p>这个示例用于测试滚动页面中的文字、样式和宽度调整。</p>
+    </header>
+    <section>
+      <h2>第一部分：背景</h2>
+      <p>有些 AI 生成的汇报材料不是分页 PPT，而是一整页可滚动的 HTML 页面。</p>
+      <div class="callout">默认不自由拖拽文档流元素，避免破坏长页面布局。</div>
+    </section>
+    <section>
+      <h2>第二部分：编辑目标</h2>
+      <ol>
+        <li>修改文字表达</li>
+        <li>调整字号和颜色</li>
+        <li>必要时启用自由定位</li>
+      </ol>
+    </section>
+    <section>
+      <h2>第三部分：导出</h2>
+      <p>导出时保留原页面结构和资源引用，只写回用户修改。</p>
+    </section>
+  </body>
+</html>
