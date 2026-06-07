@@ -65,6 +65,8 @@ Add-Result "pdf_progress_copy_is_stable" (-not $core.Contains("\u5df2\u5b8c\u621
 Add-Result "opensource_docs_exist" ((Test-Path (Join-Path $root "LICENSE")) -and (Test-Path (Join-Path $root "CONTRIBUTING.md")) -and (Test-Path (Join-Path $root "SECURITY.md")) -and $readmeContainsEnglishAndChinese)
 Add-Result "slide_thumbnail_navigation_exists" ($core -match "hpe-thumb-rail" -and $core -match "renderSlideThumbnails" -and $core -match "onThumbnailClick" -and $core -match "reorderSlides" -and $core -match "deleteSlide")
 Add-Result "long_page_minimap_exists" ($core -match "hpe-minimap" -and $core -match "onEditorScroll" -and $core -match "onMinimapClick" -and $core -match "getScrollMetrics" -and $core -match "scheduleMinimapHide")
+Add-Result "long_page_minimap_renders_page_structure" ($core -match "hpe-minimap-content" -and $core -match "collectMinimapNodes" -and $core -match "minimapNodeType" -and $core -match "hpe-minimap-node")
+Add-Result "long_page_minimap_viewport_is_draggable" ($core -match "onMinimapPointerDown" -and $core -match "onMinimapPointerMove" -and $core -match "moveMinimapTo" -and $core -match "cursor: grab")
 Add-Result "thumbnail_workspace_reserves_canvas_area" ($core -match "--hpe-thumb-width" -and $core -match "hpe-has-slide-thumbs" -and $core -match "margin-left: var\(--hpe-thumb-width\)")
 Add-Result "thumbnail_collapse_and_context_delete_exists" ($core -match "toggleThumbnails" -and $core -match "hpe-thumbs-collapsed" -and $core -match "onThumbnailContextMenu" -and $core -match "deleteThumbPage" -and -not ($core -match "hpe-thumb-delete"))
 Add-Result "header_logo_uses_extension_icon" ($core -match "logoUrl" -and $editorJs -match "assets/icons/icon32.png" -and $core -match "hpe-logo img")

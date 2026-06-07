@@ -147,6 +147,8 @@
       saveTimer: null,
       floatingTimer: null,
       minimapTimer: null,
+      minimapSignature: "",
+      minimapDrag: null,
       thumbDragIndex: null,
       thumbCollapsed: false,
       thumbSelectionActive: false,
@@ -259,10 +261,18 @@
         .hpe-thumb-menu.open { display: block; }
         .hpe-thumb-menu button { align-items: center; background: transparent; border: 0; border-radius: 6px; color: var(--hpe-danger); cursor: pointer; display: flex; font-size: 13px; gap: 8px; padding: 8px 10px; width: 100%; }
         .hpe-thumb-menu button:hover { background: #fff1f1; }
-        .hpe-minimap { background: rgba(255,255,255,.94); border: 1px solid #d0d7e2; border-radius: 10px; box-shadow: 0 12px 36px rgba(16,24,40,.18); display: none; left: 14px; overflow: hidden; padding: 8px; pointer-events: auto; position: fixed; top: calc(var(--hpe-top-height) + 12px); width: 116px; z-index: 2147483647; }
+        .hpe-minimap { background: rgba(255,255,255,.96); border: 1px solid #d0d7e2; border-radius: 10px; box-shadow: 0 12px 36px rgba(16,24,40,.18); display: none; left: 14px; overflow: hidden; padding: 8px; pointer-events: auto; position: fixed; top: calc(var(--hpe-top-height) + 12px); width: 132px; z-index: 2147483647; }
         .hpe-minimap.open { display: block; }
-        .hpe-minimap-track { background: linear-gradient(#eef4ff, #fff); border: 1px solid #d8e0ec; border-radius: 7px; cursor: pointer; height: 168px; position: relative; }
-        .hpe-minimap-window { background: rgba(22,119,255,.16); border: 2px solid var(--hpe-primary); border-radius: 6px; left: 6px; position: absolute; right: 6px; top: 0; }
+        .hpe-minimap-track { background: linear-gradient(#f5f8ff, #fff); border: 1px solid #d8e0ec; border-radius: 7px; cursor: pointer; height: 190px; overflow: hidden; position: relative; }
+        .hpe-minimap-content { inset: 0; position: absolute; }
+        .hpe-minimap-node { background: #e8eef8; border-radius: 3px; opacity: .95; position: absolute; }
+        .hpe-minimap-node.title { background: #13233f; min-height: 5px; }
+        .hpe-minimap-node.text { background: #b9c6da; }
+        .hpe-minimap-node.card { background: #fff; border: 1px solid #d5dfef; box-shadow: 0 1px 2px rgba(16,24,40,.08); }
+        .hpe-minimap-node.image { background: linear-gradient(135deg, #dbeafe, #edf2ff); border: 1px solid #bfdbfe; }
+        .hpe-minimap-window { background: rgba(22,119,255,.14); border: 2px solid var(--hpe-primary); border-radius: 6px; cursor: grab; left: 5px; position: absolute; right: 5px; top: 0; }
+        .hpe-minimap-window:active { cursor: grabbing; }
+        .hpe-minimap-window::after { background: var(--hpe-primary); border-radius: 999px; content: ""; height: 16px; left: 50%; margin-left: -13px; position: absolute; top: 50%; transform: translateY(-50%); width: 26px; }
         .hpe-tool-group { display: flex; flex-direction: column; gap: 1px; align-items: center; border-bottom: 1px solid var(--hpe-border); padding-bottom: 4px; width: 100%; }
         .hpe-tool-group:last-child { border-bottom: 0; padding-bottom: 0; }
         .hpe-topbar button, .hpe-panel button, .hpe-welcome button { border: 1px solid #d0d7e6; border-radius: 8px; background: #fff; color: #111827; cursor: pointer; font-size: 12px; line-height: 1; min-height: 34px; padding: 7px 10px; white-space: nowrap; }
@@ -590,6 +600,7 @@
         <div class="hpe-placement-preview hidden" ${UI}="true"></div>
         <div class="hpe-minimap" ${UI}="true">
           <div class="hpe-minimap-track" data-field="minimapTrack">
+            <div class="hpe-minimap-content" data-field="minimapContent"></div>
             <div class="hpe-minimap-window" data-field="minimapWindow"></div>
           </div>
         </div>
@@ -644,6 +655,7 @@
           zoomText: root.querySelector('[data-field="zoomText"]'),
           thumbList: root.querySelector('[data-field="thumbList"]'),
           minimapTrack: root.querySelector('[data-field="minimapTrack"]'),
+          minimapContent: root.querySelector('[data-field="minimapContent"]'),
           minimapWindow: root.querySelector('[data-field="minimapWindow"]'),
           pdfProgressText: root.querySelector('[data-field="pdfProgressText"]'),
           pdfProgressBar: root.querySelector('[data-field="pdfProgressBar"]')
@@ -683,6 +695,9 @@
         scheduleMinimapHide();
       });
       ui.fields.minimapTrack.addEventListener("click", onMinimapClick);
+      ui.fields.minimapTrack.addEventListener("pointerdown", onMinimapPointerDown);
+      doc.addEventListener("pointermove", onMinimapPointerMove);
+      doc.addEventListener("pointerup", onMinimapPointerUp);
       if (!state.reserveWorkspace) ui.panelHeader.addEventListener("pointerdown", startPanelDrag);
       ui.miniColor.addEventListener("change", () => applyField("color", ui.miniColor.value));
       ui.selection.querySelector(".hpe-move").addEventListener("pointerdown", startMove);
@@ -706,6 +721,8 @@
       doc.removeEventListener("blur", onEditableBlur, true);
       doc.removeEventListener("keydown", onKeyDown, true);
       doc.removeEventListener("pointermove", onDocumentPointerMove, true);
+      doc.removeEventListener("pointermove", onMinimapPointerMove);
+      doc.removeEventListener("pointerup", onMinimapPointerUp);
       doc.removeEventListener("selectionchange", rememberTextSelection);
       doc.removeEventListener("fullscreenchange", onFullscreenChange);
       restoreFloatingElements();
@@ -2072,6 +2089,7 @@
         ui.minimap.classList.remove("open");
         return;
       }
+      renderLongPageMinimap(metrics);
       const trackHeight = ui.fields.minimapTrack.clientHeight || 168;
       const ratio = Math.min(1, metrics.viewportHeight / Math.max(metrics.viewportHeight, metrics.scrollHeight));
       const windowHeight = Math.max(18, Math.round(trackHeight * ratio));
@@ -2079,6 +2097,75 @@
       const top = Math.round((metrics.scrollTop / Math.max(1, metrics.maxScroll)) * maxTop);
       ui.fields.minimapWindow.style.height = `${windowHeight}px`;
       ui.fields.minimapWindow.style.top = `${top}px`;
+    }
+
+    function renderLongPageMinimap(metrics) {
+      if (!ui.fields.minimapContent || !ui.fields.minimapTrack) return;
+      const trackHeight = ui.fields.minimapTrack.clientHeight || 190;
+      const signature = [
+        Math.round(metrics.scrollHeight),
+        Math.round(metrics.viewportHeight),
+        doc.body?.children?.length || 0,
+        state.history.length
+      ].join(":");
+      if (state.minimapSignature === signature && ui.fields.minimapContent.childElementCount) return;
+      state.minimapSignature = signature;
+      const nodes = collectMinimapNodes(metrics, trackHeight);
+      ui.fields.minimapContent.innerHTML = nodes.map((node) => {
+        const style = [
+          `left:${node.left}px`,
+          `top:${node.top}px`,
+          `width:${node.width}px`,
+          `height:${node.height}px`
+        ].join(";");
+        return `<span class="hpe-minimap-node ${node.type}" style="${style}"></span>`;
+      }).join("");
+    }
+
+    function collectMinimapNodes(metrics, trackHeight) {
+      const bodyRect = doc.body.getBoundingClientRect();
+      const contentWidth = Math.max(doc.body.scrollWidth || 0, doc.documentElement.scrollWidth || 0, win.innerWidth, 1);
+      const candidates = Array.from(doc.querySelectorAll("body > :not([data-hpe-ui]), h1,h2,h3,p,li,article,section,div,img,svg,table"));
+      const nodes = [];
+      const seen = new Set();
+      for (const el of candidates) {
+        if (nodes.length >= 80) break;
+        if (!el || seen.has(el) || el.closest(`[${UI}]`) || el === doc.body) continue;
+        seen.add(el);
+        const rect = el.getBoundingClientRect();
+        if (rect.width < 28 || rect.height < 8) continue;
+        const absoluteTop = rect.top + metrics.scrollTop;
+        if (absoluteTop + rect.height < 0 || absoluteTop > metrics.scrollHeight) continue;
+        const type = minimapNodeType(el, rect);
+        const left = clamp(Math.round(((rect.left - bodyRect.left) / contentWidth) * 104) + 5, 4, 104);
+        const width = clamp(Math.round((rect.width / contentWidth) * 108), type === "title" ? 28 : 14, 112 - left);
+        const top = clamp(Math.round((absoluteTop / metrics.scrollHeight) * trackHeight), 1, trackHeight - 3);
+        const height = clamp(Math.round((rect.height / metrics.scrollHeight) * trackHeight), type === "title" ? 5 : 3, type === "card" || type === "image" ? 28 : 12);
+        nodes.push({ type, left, top, width, height });
+      }
+      if (!nodes.length) {
+        return [
+          { type: "title", left: 10, top: 12, width: 82, height: 7 },
+          { type: "text", left: 10, top: 28, width: 96, height: 4 },
+          { type: "card", left: 8, top: 48, width: 102, height: 24 }
+        ];
+      }
+      return nodes;
+    }
+
+    function minimapNodeType(el, rect) {
+      if (["IMG", "SVG", "CANVAS", "VIDEO", "IFRAME"].includes(el.tagName)) return "image";
+      if (/^H[1-3]$/.test(el.tagName)) return "title";
+      const styles = win.getComputedStyle(el);
+      const bg = styles.backgroundColor || "";
+      const radius = parseFloat(styles.borderRadius) || 0;
+      const hasBorder = styles.borderStyle && styles.borderStyle !== "none";
+      if (rect.height > 32 && (radius > 4 || hasBorder || !/rgba?\(0,\s*0,\s*0,\s*0\)|transparent/i.test(bg))) return "card";
+      return "text";
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
     }
 
     function showMinimap() {
@@ -2097,11 +2184,44 @@
 
     function onMinimapClick(event) {
       if (state.slides.length) return;
+      if (state.minimapDrag) return;
       const rect = ui.fields.minimapTrack.getBoundingClientRect();
       const ratio = Math.max(0, Math.min(1, (event.clientY - rect.top) / Math.max(1, rect.height)));
       const target = ratio * getScrollMetrics().maxScroll;
       scrollPageTo(target);
       showMinimap();
+    }
+
+    function onMinimapPointerDown(event) {
+      if (state.slides.length || !event.target.closest(".hpe-minimap-window,.hpe-minimap-track")) return;
+      event.preventDefault();
+      state.minimapDrag = true;
+      state.minimapHover = true;
+      event.target.setPointerCapture?.(event.pointerId);
+      moveMinimapTo(event.clientY);
+    }
+
+    function onMinimapPointerMove(event) {
+      if (!state.minimapDrag) return;
+      event.preventDefault();
+      moveMinimapTo(event.clientY);
+    }
+
+    function onMinimapPointerUp() {
+      if (!state.minimapDrag) return;
+      state.minimapDrag = null;
+      scheduleMinimapHide();
+    }
+
+    function moveMinimapTo(clientY) {
+      const rect = ui.fields.minimapTrack.getBoundingClientRect();
+      const metrics = getScrollMetrics();
+      const viewportRatio = metrics.viewportHeight / Math.max(metrics.viewportHeight, metrics.scrollHeight);
+      const windowHeight = Math.max(18, rect.height * Math.min(1, viewportRatio));
+      const ratio = Math.max(0, Math.min(1, (clientY - rect.top - windowHeight / 2) / Math.max(1, rect.height - windowHeight)));
+      scrollPageTo(ratio * metrics.maxScroll);
+      updateMinimap();
+      ui.minimap.classList.add("open");
     }
 
     function getPageMode() {

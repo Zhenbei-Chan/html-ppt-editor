@@ -395,6 +395,8 @@
         document.body.dispatchEvent(new Event("scroll", { bubbles: true }));
         await sleep(40);
         assert("long page minimap appears while scrolling", document.querySelector(".hpe-minimap").classList.contains("open"));
+        assert("long page minimap renders page structure", document.querySelectorAll(".hpe-minimap-node").length > 0);
+        assert("long page minimap has typed content blocks", Boolean(document.querySelector(".hpe-minimap-node.title,.hpe-minimap-node.card,.hpe-minimap-node.text")));
         const minimap = document.querySelector(".hpe-minimap");
         minimap.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
         await sleep(980);
@@ -410,6 +412,29 @@
         }));
         await sleep(180);
         assert("long page minimap click jumps page position", Math.max(document.body.scrollTop, document.documentElement.scrollTop, window.scrollY) > beforeMinimapClickTop);
+        const beforeMinimapDragTop = Math.max(document.body.scrollTop, document.documentElement.scrollTop, window.scrollY);
+        const windowBox = document.querySelector("[data-field='minimapWindow']");
+        windowBox.dispatchEvent(new PointerEvent("pointerdown", {
+          bubbles: true,
+          cancelable: true,
+          pointerId: 9,
+          clientX: trackRect.left + 20,
+          clientY: trackRect.top + 20
+        }));
+        document.dispatchEvent(new PointerEvent("pointermove", {
+          bubbles: true,
+          pointerId: 9,
+          clientX: trackRect.left + 20,
+          clientY: trackRect.top + 80
+        }));
+        document.dispatchEvent(new PointerEvent("pointerup", {
+          bubbles: true,
+          pointerId: 9,
+          clientX: trackRect.left + 20,
+          clientY: trackRect.top + 80
+        }));
+        await sleep(80);
+        assert("long page minimap viewport can be dragged", Math.max(document.body.scrollTop, document.documentElement.scrollTop, window.scrollY) !== beforeMinimapDragTop);
         minimap.dispatchEvent(new MouseEvent("mouseleave", { bubbles: true }));
 
         click(document.querySelector("[data-action='addText']"));

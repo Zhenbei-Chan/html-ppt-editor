@@ -14,7 +14,7 @@ Testing and acceptance. The project is ready for public GitHub source sharing as
 
 ## Latest Completed Task
 
-- `T-923`: Thumbnail rail collapse, thumbnail page deletion UX, header logo, and bottom page selector sync.
+- `T-924`: Long-page minimap now renders a lightweight page-like structure and supports dragging the viewport indicator.
 
 ## Confirmed Open Source Files
 
